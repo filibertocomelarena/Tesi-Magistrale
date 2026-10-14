@@ -1,0 +1,65 @@
+from music21 import converter, stream, chord, interval
+
+def analizza_harmony(xml_file, start_sec, end_sec):
+    # Carica il file MusicXML
+    score = converter.parse(xml_file)
+
+    # Estrarre la partitura strumentale principale (solitamente la prima)
+    part = score.parts[0]
+
+    # Raccogli tutti gli accordi presenti nel file
+    accordi = []
+    for element in part.flat.notes:
+        if isinstance(element, chord.Chord):
+            accordi.append(element)
+
+    # Calcolare la durata di ogni nota in secondi
+    tempo = part.flat.getTempoAt(0)  # Tempo al primo evento
+    tempo_value = tempo.getQuarterBPM()  # BPM (battiti per minuto)
+    seconds_per_beat = 60 / tempo_value  # Convertire a secondi per battito
+
+    # Filtro per gli accordi nell'intervallo di tempo specificato
+    start_tick = start_sec / seconds_per_beat
+    end_tick = end_sec / seconds_per_beat
+
+    # Filtrare gli accordi in base ai ticks
+    accordi_filtrati = []
+    for a in accordi:
+        start_time = a.offset
+        end_time = start_time + (a.quarterLength * seconds_per_beat)
+        if start_time >= start_tick and end_time <= end_tick:
+            accordi_filtrati.append(a)
+
+    # Analizzare gli accordi filtrati
+    for a in accordi_filtrati:
+        print(f"Accordo: {a}, Inizia al secondo: {a.offset:.2f}")
+
+        # Verifica se c'è una cadenza (Tonica -> Dominante)
+        if len(accordi_filtrati) > 1:
+            prev_chord = accordi_filtrati[accordi_filtrati.index(a) - 1]
+            if is_dominant_to_tonic(prev_chord, a):
+                print(f"Possibile cadenza: {prev_chord} -> {a}")
+
+def is_dominant_to_tonic(prev_chord, current_chord):
+    """
+    Verifica se una progressione di accordi segue una cadenza da dominante a tonica.
+    (Es. V7 -> I)
+    """
+    # Cadenza tipica da dominante (V7) a tonica (I)
+    dominant_chords = ['G7', 'D7', 'A7']
+    tonic_chords = ['C', 'G', 'F']
+
+    prev_chord_str = prev_chord.commonName
+    current_chord_str = current_chord.commonName
+
+    if prev_chord_str in dominant_chords and current_chord_str in tonic_chords:
+        return True
+    return False
+
+
+# Usa il codice per un file MusicXML
+xml_file = 'tuo_file.xml'  # Sostituisci con il percorso del tuo file MusicXML
+start_sec = 83  # Secondo di inizio (1:23)
+end_sec = 105  # Secondo di fine (1:45)
+
+analizza_harmony(xml_file, start_sec, end_sec)
